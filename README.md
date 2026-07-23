@@ -40,6 +40,32 @@ There are two different profiler engines:
 * Native/Async - uses the [async-profiler](https://github.com/async-profiler/async-profiler) library (*only available on Linux & macOS systems*)
 * Java - uses `ThreadMXBean`, an improved version of the popular [WarmRoast profiler](https://github.com/sk89q/WarmRoast) by sk89q.
 
+#### Automatic profilers
+
+Scheduled profilers can be configured in spark's `config.json`. Times use the configured [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones); when `timezone` is omitted, the JVM system timezone is used.
+
+```json
+{
+  "automaticProfilers": {
+    "timezone": "America/Halifax",
+    "discordWebhook": "https://discord.com/api/webhooks/...",
+    "profiles": {
+      "normal-profiler": {
+        "fileName": "MyServer Automatic Profiler - {date}",
+        "flags": "--timeout 300 --only-ticks-over 100",
+        "timestamps": ["00:00", "12:00"]
+      },
+      "async-profiler": {
+        "flags": "--timeout 300 --thread * --ignore-sleeping",
+        "timestamps": ["06:00", "18:00"]
+      }
+    }
+  }
+}
+```
+
+Every automatic profiler is saved as a `.sparkprofile` file in spark's data directory. The optional per-profile `fileName` supports a `{date}` placeholder formatted like `23-July-2026` in the configured timezone; the extension is added automatically. Existing names are preserved with numeric suffixes instead of being overwritten. If `discordWebhook` is configured, the same file is also attached to a Discord webhook message and remains on disk after delivery. A missing `--timeout` defaults to 300 seconds. Invalid timezones disable automatic scheduling; invalid timestamps are skipped. Configuration changes require a restart.
+
 ### :zap: Memory Inspection
 
 spark includes a number of tools which are useful for diagnosing memory issues with a server.

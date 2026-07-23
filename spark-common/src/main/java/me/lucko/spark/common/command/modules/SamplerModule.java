@@ -50,6 +50,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -253,6 +254,7 @@ public class SamplerModule implements CommandModule {
         }
 
         platform.getSamplerContainer().setActiveSampler(sampler);
+        resp.profilerStarted(sampler);
 
         resp.broadcastPrefixed(text()
                 .append(text((mode == SamplerMode.ALLOCATION ? "Allocation Profiler" : "Profiler") + " is now running!", GOLD))
@@ -289,8 +291,16 @@ public class SamplerModule implements CommandModule {
             Sampler.ExportProps exportProps = getExportProps(platform, resp, arguments);
             boolean saveToFile = arguments.boolFlag("save-to-file");
             future.thenAcceptAsync(s -> {
-                resp.broadcastPrefixed(text("The active profiler has completed! Uploading results..."));
-                handleUpload(platform, resp, s, exportProps, saveToFile);
+                resp.broadcastPrefixed(text(saveToFile
+                        ? "The active profiler has completed! Saving results..."
+                        : "The active profiler has completed! Uploading results..."));
+                try {
+                    handleUpload(platform, resp, s, exportProps, saveToFile);
+                } catch (RuntimeException e) {
+                    resp.broadcastPrefixed(text("An error occurred whilst exporting the profiler results.", RED));
+                    platform.getPlugin().log(Level.WARNING, "Error whilst exporting profiler results", e);
+                    resp.profileSaveFailed();
+                }
             });
         }
     }
@@ -444,18 +454,37 @@ public class SamplerModule implements CommandModule {
         }
 
         if (saveToFile) {
-            Path file = platform.resolveSaveFile("profile", "sparkprofile");
             try {
-                Files.write(file, output.toByteArray());
+                Path defaultFile = platform.resolveSaveFile("profile", "sparkprofile");
+                Path file = writeProfileFile(resp, defaultFile, output.toByteArray());
 
                 resp.broadcastPrefixed(text("Profiler stopped & save complete!", GOLD));
                 resp.broadcastPrefixed(text("Data has been written to: " + file));
                 resp.broadcastPrefixed(text("You can view the profile file using the web app @ " + platform.getViewerUrl(), GRAY));
 
                 platform.getActivityLog().addToLog(Activity.fileActivity(resp.senderData(), System.currentTimeMillis(), "Profiler", file.toString()));
+                resp.profileSaved(file);
             } catch (IOException e) {
                 resp.broadcastPrefixed(text("An error occurred whilst saving the data.", RED));
                 platform.getPlugin().log(Level.WARNING, "Error whilst saving profiler results", e);
+                resp.profileSaveFailed();
+            }
+        }
+    }
+
+    private Path writeProfileFile(CommandResponseHandler resp, Path defaultFile, byte[] output) throws IOException {
+        if (!resp.hasProfileOutputHandler()) {
+            Files.write(defaultFile, output);
+            return defaultFile;
+        }
+
+        while (true) {
+            Path file = resp.resolveProfileFile(defaultFile);
+            try {
+                Files.write(file, output, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+                return file;
+            } catch (java.nio.file.FileAlreadyExistsException ignored) {
+                // Ask the output handler for the next available collision-safe name.
             }
         }
     }

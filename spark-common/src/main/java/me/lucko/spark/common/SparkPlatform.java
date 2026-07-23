@@ -37,6 +37,7 @@ import me.lucko.spark.common.platform.PlatformInfo;
 import me.lucko.spark.common.platform.PlatformStatisticsProvider;
 import me.lucko.spark.common.sampler.BackgroundSamplerManager;
 import me.lucko.spark.common.sampler.SamplerContainer;
+import me.lucko.spark.common.sampler.automatic.AutomaticProfilerManager;
 import me.lucko.spark.common.sampler.source.ClassSourceLookup;
 import me.lucko.spark.common.tick.TickHook;
 import me.lucko.spark.common.tick.TickReporter;
@@ -77,6 +78,7 @@ public class SparkPlatform {
     private final ActivityLog activityLog;
     private final SamplerContainer samplerContainer;
     private final BackgroundSamplerManager backgroundSamplerManager;
+    private final AutomaticProfilerManager automaticProfilerManager;
     private final TickHook tickHook;
     private final TickReporter tickReporter;
     private final TickStatistics tickStatistics;
@@ -129,6 +131,7 @@ public class SparkPlatform {
         this.statisticsProvider = new PlatformStatisticsProvider(this);
 
         this.commandManager = new CommandManager(this, this.configuration);
+        this.automaticProfilerManager = new AutomaticProfilerManager(this, this.configuration);
     }
 
     public void enable() {
@@ -161,9 +164,11 @@ public class SparkPlatform {
         SparkApi.register(api);
 
         this.backgroundSamplerManager.initialise();
+        this.automaticProfilerManager.initialise();
     }
 
     public void disable() {
+        this.automaticProfilerManager.close();
         this.commandManager.close();
 
         if (this.tickHook != null) {
@@ -225,6 +230,10 @@ public class SparkPlatform {
 
     public BackgroundSamplerManager getBackgroundSamplerManager() {
         return this.backgroundSamplerManager;
+    }
+
+    public AutomaticProfilerManager getAutomaticProfilerManager() {
+        return this.automaticProfilerManager;
     }
 
     public TickHook getTickHook() {

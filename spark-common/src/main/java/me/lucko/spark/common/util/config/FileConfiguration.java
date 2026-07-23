@@ -35,7 +35,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class FileConfiguration implements Configuration {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -82,7 +84,7 @@ public class FileConfiguration implements Configuration {
 
     @Override
     public String getString(String path, String def) {
-        JsonElement el = this.root.get(path);
+        JsonElement el = getElement(path);
         if (el == null || !el.isJsonPrimitive()) {
             return def;
         }
@@ -92,7 +94,7 @@ public class FileConfiguration implements Configuration {
 
     @Override
     public boolean getBoolean(String path, boolean def) {
-        JsonElement el = this.root.get(path);
+        JsonElement el = getElement(path);
         if (el == null || !el.isJsonPrimitive()) {
             return def;
         }
@@ -103,7 +105,7 @@ public class FileConfiguration implements Configuration {
 
     @Override
     public int getInteger(String path, int def) {
-        JsonElement el = this.root.get(path);
+        JsonElement el = getElement(path);
         if (el == null || !el.isJsonPrimitive()) {
             return def;
         }
@@ -114,7 +116,7 @@ public class FileConfiguration implements Configuration {
 
     @Override
     public List<String> getStringList(String path) {
-        JsonElement el = this.root.get(path);
+        JsonElement el = getElement(path);
         if (el == null || !el.isJsonArray()) {
             return Collections.emptyList();
         }
@@ -126,6 +128,17 @@ public class FileConfiguration implements Configuration {
             }
         }
         return list;
+    }
+
+    @Override
+    public Set<String> getKeys(String path) {
+        JsonElement element = getElement(path);
+        if (element == null || !element.isJsonObject()) {
+            return Collections.emptySet();
+        }
+        Set<String> keys = new LinkedHashSet<>();
+        element.getAsJsonObject().entrySet().forEach(entry -> keys.add(entry.getKey()));
+        return keys;
     }
 
     @Override
@@ -154,12 +167,26 @@ public class FileConfiguration implements Configuration {
 
     @Override
     public boolean contains(String path) {
-        return this.root.has(path);
+        return getElement(path) != null;
     }
 
     @Override
     public void remove(String path) {
         this.root.remove(path);
+    }
+
+    private JsonElement getElement(String path) {
+        JsonElement current = this.root;
+        for (String part : path.split("\\.")) {
+            if (!current.isJsonObject()) {
+                return null;
+            }
+            current = current.getAsJsonObject().get(part);
+            if (current == null) {
+                return null;
+            }
+        }
+        return current;
     }
 
 }

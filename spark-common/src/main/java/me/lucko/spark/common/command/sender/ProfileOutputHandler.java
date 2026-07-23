@@ -18,40 +18,23 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package me.lucko.spark.common.util.config;
+package me.lucko.spark.common.command.sender;
 
-import java.util.List;
-import java.util.Set;
+import me.lucko.spark.common.sampler.Sampler;
 
-public interface Configuration {
+import java.nio.file.Path;
 
-    static Configuration combining(Configuration... configurations) {
-        return new CombinedConfiguration(configurations);
-    }
+/**
+ * Receives the outcome of a profiler file export started by this sender.
+ */
+public interface ProfileOutputHandler {
 
-    void load();
+    void profilerStarted(Sampler sampler);
 
-    void save();
+    Path resolveProfileFile(Path defaultFile);
 
-    String getString(String path, String def);
+    void profileSaved(Path file);
 
-    boolean getBoolean(String path, boolean def);
+    void profileSaveFailed();
 
-    int getInteger(String path, int def);
-
-    List<String> getStringList(String path);
-
-    Set<String> getKeys(String path);
-
-    void setString(String path, String value);
-
-    void setBoolean(String path, boolean value);
-
-    void setInteger(String path, int value);
-
-    void setStringList(String path, List<String> value);
-
-    boolean contains(String path);
-
-    void remove(String path);
 }

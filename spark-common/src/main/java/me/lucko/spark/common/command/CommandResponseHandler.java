@@ -22,12 +22,15 @@ package me.lucko.spark.common.command;
 
 import me.lucko.spark.common.SparkPlatform;
 import me.lucko.spark.common.command.sender.CommandSender;
+import me.lucko.spark.common.command.sender.ProfileOutputHandler;
 import me.lucko.spark.common.platform.PlatformInfo;
+import me.lucko.spark.common.sampler.Sampler;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.TextComponent;
 
 import java.lang.ref.WeakReference;
+import java.nio.file.Path;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -66,6 +69,39 @@ public class CommandResponseHandler {
 
     public CommandSender.Data senderData() {
         return this.senderData;
+    }
+
+    public void profileSaved(Path file) {
+        CommandSender sender = this.sender.get();
+        if (sender instanceof ProfileOutputHandler) {
+            ((ProfileOutputHandler) sender).profileSaved(file);
+        }
+    }
+
+    public Path resolveProfileFile(Path defaultFile) {
+        CommandSender sender = this.sender.get();
+        if (sender instanceof ProfileOutputHandler) {
+            return ((ProfileOutputHandler) sender).resolveProfileFile(defaultFile);
+        }
+        return defaultFile;
+    }
+
+    public boolean hasProfileOutputHandler() {
+        return this.sender.get() instanceof ProfileOutputHandler;
+    }
+
+    public void profilerStarted(Sampler sampler) {
+        CommandSender sender = this.sender.get();
+        if (sender instanceof ProfileOutputHandler) {
+            ((ProfileOutputHandler) sender).profilerStarted(sampler);
+        }
+    }
+
+    public void profileSaveFailed() {
+        CommandSender sender = this.sender.get();
+        if (sender instanceof ProfileOutputHandler) {
+            ((ProfileOutputHandler) sender).profileSaveFailed();
+        }
     }
 
     private void sendMessage(CommandSender sender, Component message) {

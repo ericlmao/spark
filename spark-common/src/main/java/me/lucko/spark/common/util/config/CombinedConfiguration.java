@@ -23,7 +23,9 @@ package me.lucko.spark.common.util.config;
 import com.google.common.collect.ImmutableList;
 
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 class CombinedConfiguration implements Configuration {
 
@@ -83,6 +85,15 @@ class CombinedConfiguration implements Configuration {
             }
         }
         return Collections.emptyList();
+    }
+
+    @Override
+    public Set<String> getKeys(String path) {
+        Set<String> keys = new LinkedHashSet<>();
+        for (Configuration configuration : this.configurations) {
+            keys.addAll(configuration.getKeys(path));
+        }
+        return keys;
     }
 
     @Override

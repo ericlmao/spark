@@ -23,6 +23,7 @@ package me.lucko.spark.common.util.config;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public enum RuntimeConfiguration implements Configuration {
     SYSTEM_PROPERTIES {
@@ -62,6 +63,11 @@ public enum RuntimeConfiguration implements Configuration {
             return Collections.emptyList();
         }
         return Arrays.asList(value.split(","));
+    }
+
+    @Override
+    public Set<String> getKeys(String path) {
+        return Collections.emptySet();
     }
 
     @Override
