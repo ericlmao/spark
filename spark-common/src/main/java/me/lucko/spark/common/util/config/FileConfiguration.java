@@ -33,7 +33,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -53,6 +55,7 @@ public class FileConfiguration implements Configuration {
     @Override
     public void load() {
         JsonObject root = null;
+        boolean saveDefaults = false;
         if (Files.exists(this.file)) {
             try (BufferedReader reader = Files.newBufferedReader(this.file, StandardCharsets.UTF_8)) {
                 root = GSON.fromJson(reader, JsonObject.class);
@@ -63,8 +66,47 @@ public class FileConfiguration implements Configuration {
         if (root == null) {
             root = new JsonObject();
             root.addProperty("_header", "spark configuration file - https://spark.lucko.me/docs/Configuration");
+            saveDefaults = true;
+        }
+        if (!root.has("automaticProfilers")) {
+            root.add("automaticProfilers", createDefaultAutomaticProfilers());
+            saveDefaults = true;
         }
         this.root = root;
+        if (saveDefaults) {
+            save();
+        }
+    }
+
+    private static JsonObject createDefaultAutomaticProfilers() {
+        JsonObject automaticProfilers = new JsonObject();
+        automaticProfilers.addProperty("enabled", false);
+        automaticProfilers.addProperty("timezone", ZoneId.systemDefault().getId());
+        automaticProfilers.addProperty("discordWebhook", "");
+
+        JsonObject profiles = new JsonObject();
+        profiles.add("normal-profiler", createDefaultAutomaticProfiler(
+                "MyServer Automatic Profiler - {date}",
+                "--timeout 300 --only-ticks-over 100",
+                "00:00", "12:00"
+        ));
+        profiles.add("async-profiler", createDefaultAutomaticProfiler(
+                "MyServer Async Profiler - {date}",
+                "--timeout 300 --thread * --ignore-sleeping",
+                "06:00", "18:00"
+        ));
+        automaticProfilers.add("profiles", profiles);
+        return automaticProfilers;
+    }
+
+    private static JsonObject createDefaultAutomaticProfiler(String fileName, String flags, String... timestamps) {
+        JsonObject profiler = new JsonObject();
+        profiler.addProperty("fileName", fileName);
+        profiler.addProperty("flags", flags);
+        JsonArray timestampArray = new JsonArray();
+        Arrays.stream(timestamps).forEach(timestampArray::add);
+        profiler.add("timestamps", timestampArray);
+        return profiler;
     }
 
     @Override

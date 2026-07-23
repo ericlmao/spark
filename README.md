@@ -47,6 +47,7 @@ Scheduled profilers can be configured in spark's `config.json`. Times use the co
 ```json
 {
   "automaticProfilers": {
+    "enabled": true,
     "timezone": "America/Halifax",
     "discordWebhook": "https://discord.com/api/webhooks/...",
     "profiles": {
@@ -64,7 +65,7 @@ Scheduled profilers can be configured in spark's `config.json`. Times use the co
 }
 ```
 
-Every automatic profiler is saved as a `.sparkprofile` file in spark's data directory. The optional per-profile `fileName` supports a `{date}` placeholder formatted like `23-July-2026` in the configured timezone; the extension is added automatically. Existing names are preserved with numeric suffixes instead of being overwritten. If `discordWebhook` is configured, the same file is also attached to a Discord webhook message and remains on disk after delivery. A missing `--timeout` defaults to 300 seconds. Invalid timezones disable automatic scheduling; invalid timestamps are skipped. Configuration changes require a restart.
+The generated examples are disabled by default; set `enabled` to `true` after configuring them. Every automatic profiler is saved as a `.sparkprofile` file in spark's data directory. The optional per-profile `fileName` supports a `{date}` placeholder formatted like `23-July-2026` in the configured timezone; the extension is added automatically. Existing names are preserved with numeric suffixes instead of being overwritten. If `discordWebhook` is configured, the same file is also attached to a Discord webhook message and remains on disk after delivery. A missing `--timeout` defaults to 300 seconds. Invalid timezones disable automatic scheduling; invalid timestamps are skipped. Configuration changes require a restart.
 
 ### :zap: Memory Inspection
 

@@ -63,6 +63,7 @@ public final class AutomaticProfilerManager implements AutoCloseable {
     private static final DateTimeFormatter FILE_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MMMM-yyyy", Locale.ENGLISH);
 
     private final SparkPlatform platform;
+    private final boolean enabled;
     private final ZoneId timezone;
     private final Clock clock;
     private final List<ScheduledProfiler> profilers;
@@ -73,6 +74,7 @@ public final class AutomaticProfilerManager implements AutoCloseable {
 
     public AutomaticProfilerManager(SparkPlatform platform, Configuration configuration) {
         this.platform = platform;
+        this.enabled = configuration.getBoolean(CONFIG_ROOT + ".enabled", true);
 
         ZoneId timezone = null;
         String timezoneName = configuration.getString(CONFIG_ROOT + ".timezone", ZoneId.systemDefault().getId()).trim();
@@ -100,7 +102,7 @@ public final class AutomaticProfilerManager implements AutoCloseable {
     }
 
     public void initialise() {
-        if (this.platform.getPlugin().getPlatformInfo().getType() == PlatformInfo.Type.CLIENT || this.timezone == null || this.profilers.isEmpty()) {
+        if (!this.enabled || this.platform.getPlugin().getPlatformInfo().getType() == PlatformInfo.Type.CLIENT || this.timezone == null || this.profilers.isEmpty()) {
             return;
         }
 
