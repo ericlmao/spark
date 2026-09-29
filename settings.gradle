@@ -29,6 +29,7 @@ include (
         'spark-common',
         'spark-fabric',
         'spark-forge',
+        'spark-geyser',
         'spark-minecraft',
         'spark-neoforge',
         'spark-paper',
