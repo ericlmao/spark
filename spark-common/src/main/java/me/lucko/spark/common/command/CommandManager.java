@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -93,6 +94,33 @@ public class CommandManager implements AutoCloseable {
     public void close() {
         for (CommandModule module : this.modules) {
             module.close();
+        }
+    }
+
+    /**
+     * Runs a task while holding the lock that command executions hold, so the task
+     * never runs at the same time as a command.
+     *
+     * @param task the task
+     * @param timeout the longest time to wait for the lock
+     * @param unit the unit of the timeout
+     * @return true if the task ran, false if the lock was not acquired in time
+     */
+    public boolean runExclusive(Runnable task, long timeout, TimeUnit unit) {
+        try {
+            if (!this.executeLock.tryLock(timeout, unit)) {
+                return false;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+
+        try {
+            task.run();
+            return true;
+        } finally {
+            this.executeLock.unlock();
         }
     }
 

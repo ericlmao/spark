@@ -41,6 +41,7 @@ import me.lucko.spark.common.platform.PlatformStatisticsProvider;
 import me.lucko.spark.common.platform.WorldMetricsCollector;
 import me.lucko.spark.common.sampler.BackgroundSamplerManager;
 import me.lucko.spark.common.sampler.SamplerContainer;
+import me.lucko.spark.common.sampler.auto.AutoProfilerManager;
 import me.lucko.spark.common.sampler.source.ClassSourceLookup;
 import me.lucko.spark.common.tick.TickHook;
 import me.lucko.spark.common.tick.TickReporter;
@@ -90,6 +91,7 @@ public class SparkPlatform {
     private final PlatformStatisticsProvider statisticsProvider;
     private final WorldMetricsCollector worldMetricsCollector;
     private final CommandManager commandManager;
+    private final AutoProfilerManager autoProfilerManager;
     private final AtomicBoolean enabled = new AtomicBoolean(false);
     private Map<String, GarbageCollectorStatistics> startupGcStatistics = ImmutableMap.of();
     private long serverNormalOperationStartTime;
@@ -139,6 +141,7 @@ public class SparkPlatform {
         this.worldMetricsCollector = new WorldMetricsCollector(this);
 
         this.commandManager = new CommandManager(this, this.configuration);
+        this.autoProfilerManager = new AutoProfilerManager(this, this.configuration);
     }
 
     public void enable() {
@@ -176,9 +179,11 @@ public class SparkPlatform {
         SparkApi.register(api);
 
         this.backgroundSamplerManager.initialise();
+        this.autoProfilerManager.start();
     }
 
     public void disable() {
+        this.autoProfilerManager.close();
         this.commandManager.close();
 
         if (this.tickHook != null) {
@@ -232,6 +237,10 @@ public class SparkPlatform {
 
     public CommandManager getCommandManager() {
         return this.commandManager;
+    }
+
+    public AutoProfilerManager getAutoProfilerManager() {
+        return this.autoProfilerManager;
     }
 
     public ActivityLog getActivityLog() {
