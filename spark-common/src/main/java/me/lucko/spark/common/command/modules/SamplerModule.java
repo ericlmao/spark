@@ -34,12 +34,10 @@ import me.lucko.spark.common.command.tabcomplete.TabCompleter;
 import me.lucko.spark.common.sampler.Sampler;
 import me.lucko.spark.common.sampler.SamplerBuilder;
 import me.lucko.spark.common.sampler.SamplerMode;
-import me.lucko.spark.common.sampler.ThreadDumper;
-import me.lucko.spark.common.sampler.ThreadGrouper;
+import me.lucko.spark.common.sampler.SamplerStartOptions;
 import me.lucko.spark.common.sampler.async.AsyncSampler;
 import me.lucko.spark.common.sampler.java.MergeStrategy;
 import me.lucko.spark.common.sampler.source.ClassSourceLookup;
-import me.lucko.spark.common.tick.TickHook;
 import me.lucko.spark.common.util.FormatUtil;
 import me.lucko.spark.common.util.MediaTypes;
 import me.lucko.spark.common.util.TimeUtil;
@@ -58,9 +56,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import static net.kyori.adventure.text.Component.empty;
@@ -172,87 +168,19 @@ public class SamplerModule implements CommandModule {
             }
         }
 
-        int timeoutSeconds = arguments.intFlag("timeout");
-        if (timeoutSeconds != -1 && timeoutSeconds <= 10) {
-            resp.replyPrefixed(text("The specified timeout is not long enough for accurate results to be formed. " +
-                    "Please choose a value greater than 10.", RED));
-            return;
-        }
+        SamplerStartOptions options = SamplerStartOptions.parse(platform, arguments);
 
+        int timeoutSeconds = options.timeoutSeconds();
         if (timeoutSeconds != -1 && timeoutSeconds < 30) {
             resp.replyPrefixed(text("The accuracy of the output will significantly improve when the profiler is able to run for longer periods. " +
                     "Consider setting a timeout value over 30 seconds."));
         }
 
-        boolean alloc = arguments.boolFlag("alloc");
-        boolean lock = arguments.boolFlag("lock");
-        if (alloc && lock) {
-            resp.replyPrefixed(text("The --alloc and --lock flags cannot be used together. Please choose one profiling mode.", RED));
-            return;
-        }
-
-        SamplerMode mode = alloc ? SamplerMode.ALLOCATION : lock ? SamplerMode.LOCK : SamplerMode.EXECUTION;
-        boolean allocLiveOnly = arguments.boolFlag("alloc-live-only");
-
-        double interval = arguments.doubleFlag("interval");
-        if (interval <= 0) {
-            interval = mode.defaultInterval();
-        }
-
-        boolean ignoreSleeping = arguments.boolFlag("ignore-sleeping");
-        boolean forceJavaSampler = arguments.boolFlag("force-java-sampler");
-
-        Set<String> threads = arguments.stringFlag("thread");
-        ThreadDumper threadDumper;
-        if (threads.isEmpty()) {
-            // use the server thread
-            threadDumper = platform.getPlugin().getDefaultThreadDumper();
-        } else if (threads.contains("*")) {
-            threadDumper = ThreadDumper.ALL;
-        } else {
-            if (arguments.boolFlag("regex")) {
-                threadDumper = new ThreadDumper.Regex(threads);
-            } else {
-                // specific matches
-                threadDumper = new ThreadDumper.Specific(threads);
-            }
-        }
-
-        Supplier<ThreadGrouper> threadGrouper;
-        if (arguments.boolFlag("combine-all")) {
-            threadGrouper = ThreadGrouper.AS_ONE;
-        } else if (arguments.boolFlag("not-combined")) {
-            threadGrouper = ThreadGrouper.BY_NAME;
-        } else {
-            threadGrouper = ThreadGrouper.BY_POOL;
-        }
-
-        int ticksOver = arguments.intFlag("only-ticks-over");
-        TickHook tickHook = null;
-        if (ticksOver != -1) {
-            tickHook = platform.getTickHook();
-            if (tickHook == null) {
-                resp.replyPrefixed(text("Tick counting is not supported!", RED));
-                return;
-            }
-        }
+        SamplerMode mode = options.mode();
 
         resp.broadcastPrefixed(text("Starting a new profiler, please wait..."));
 
-        SamplerBuilder builder = new SamplerBuilder();
-        builder.mode(mode);
-        builder.threadDumper(threadDumper);
-        builder.threadGrouper(threadGrouper);
-        if (timeoutSeconds != -1) {
-            builder.completeAfter(timeoutSeconds, TimeUnit.SECONDS);
-        }
-        builder.samplingInterval(interval);
-        builder.ignoreSleeping(ignoreSleeping);
-        builder.forceJavaSampler(forceJavaSampler);
-        builder.allocLiveOnly(allocLiveOnly);
-        if (ticksOver != -1) {
-            builder.ticksOver(ticksOver, tickHook);
-        }
+        SamplerBuilder builder = options.createBuilder();
 
         Sampler sampler;
         try {
